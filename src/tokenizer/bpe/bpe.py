@@ -1,4 +1,6 @@
 from src.tokenizer.bpe.pre_tokenization import PreTokenizer
+import os
+import json
 
 
 class BPETokenizer:
@@ -118,7 +120,25 @@ class BPETokenizer:
             self.stats.pop(max_symbols)
             self.indices.pop(max_symbols)
 
+        self.merges = merges
         return merges
+
+    def save_state(self, directory):
+        os.makedirs(directory, exist_ok=True)
+        vocab_path = os.path.join(directory, "vocab.json")
+        merges_path = os.path.join(directory, "merges.txt")
+        normal_vocab = {key: value.decode("utf-8") for key, value in self.vocab.items()}
+        normal_merges = [
+            "\t".join([x.decode("utf-8"), y.decode("utf-8")]) for x, y in self.merges
+        ]
+
+        with open(vocab_path, "w") as f:
+            json.dump(normal_vocab, f, indent=4)
+
+        with open(merges_path, "w") as f:
+            f.write("\n".join(normal_merges))
+
+        print(f"Saved Vocabulary and Merges into {directory}")
 
 
 if __name__ == "__main__":
