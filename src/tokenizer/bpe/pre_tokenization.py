@@ -1,6 +1,7 @@
 import os
 from typing import BinaryIO
 import regex as re
+import threading
 
 
 class PreTokenizer:
@@ -70,10 +71,11 @@ class PreTokenizer:
     ):
         self.file = file
         self.num_processes = num_processes
+        self.final_results = [None] * self.num_processes
         self.split_special_token = split_special_token.encode("utf-8")
         self.PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
-    def __pre_tokenize_chunk(self, start, end):
+    def __pre_tokenize_chunk(self, start, end, processor_id):
 
         # lock_file
         self.file.seek(start)
@@ -90,23 +92,38 @@ class PreTokenizer:
                 key = word.group().encode("utf-8")
                 local_dict[key] = local_dict.get(key, 0) + 1
 
-        # lock global vocab
-        for key in local_dict:
-            self.global_vocab[key] = self.global_vocab.get(key, 0) + local_dict[key]
-        # unlock global vocab
+        self.final_results[processor_id] = local_dict
         return local_dict
 
     def pre_tokenize(self) -> dict[bytes, int]:
         boundaries = self.__find_chunk_boundaries(
             self.file, self.num_processes, self.split_special_token
         )
-        self.global_vocab = {}
+        pid = 0
+        threads = []
 
         for start, end in zip(boundaries[:-1], boundaries[1:]):
-            self.__pre_tokenize_chunk(start, end)
+            thread = threading.Thread(
+                target=self.__pre_tokenize_chunk, args=(start, end, pid)
+            )
+            threads.append(thread)
+            thread.start()
+            pid += 1
+            # self.__pre_tokenize_chunk(start, end)
+
+        assert len(threads) <= self.num_processes
+        for thread in threads:
+            thread.join()
+
+        global_vocab = {}
+        for local_dict in self.final_results:
+            if local_dict is None:
+                continue
+            for key in local_dict:
+                global_vocab[key] = global_vocab.get(key, 0) + local_dict[key]
 
         id2wstats = dict()
-        for i, key in enumerate(self.global_vocab):
-            id2wstats[i] = (key, tuple(key), self.global_vocab[key])
+        for i, key in enumerate(global_vocab):
+            id2wstats[i] = (key, tuple(key), global_vocab[key])
 
         return id2wstats
