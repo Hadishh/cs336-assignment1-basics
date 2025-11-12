@@ -115,7 +115,7 @@ class PreTokenizer:
         for thread in threads:
             thread.join()
 
-        global_vocab = {}
+        global_vocab = dict()
         for local_dict in self.final_results:
             if local_dict is None:
                 continue
