@@ -124,5 +124,4 @@ class BPETokenizer:
 if __name__ == "__main__":
     from tests.test_train_bpe import test_train_bpe, test_train_bpe_special_tokens
 
-    test_train_bpe_special_tokens(None)
     test_train_bpe()
