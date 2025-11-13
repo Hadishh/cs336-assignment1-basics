@@ -18,7 +18,7 @@ class BPETokenizer:
 
         self.indices[key].remove(occurance)
 
-    def __init__(self, input_path, max_vocab_size, special_tokens):
+    def __init__(self, input_path, max_vocab_size, special_tokens, num_proc):
         self.input_path = input_path
         self.max_vocab_size = max_vocab_size
         self.special_tokens = special_tokens
@@ -32,9 +32,8 @@ class BPETokenizer:
         for token in special_tokens:
             self.vocab[len(self.vocab)] = token.encode("utf-8")
 
-        with open(self.input_path, "rb") as f:
-            pre_tok = PreTokenizer(f, special_tokens[0], num_processes=4)
-            self.id2wstats = pre_tok.pre_tokenize()
+        pre_tok = PreTokenizer(input_path, special_tokens[0], num_processes=num_proc)
+        self.id2wstats = pre_tok.pre_tokenize()
 
         ## initializating stats
         self.stats = dict()
@@ -86,6 +85,7 @@ class BPETokenizer:
     def train_bpe(self):
         # we have initialized stats ready
         merges = []
+        print("Training BPE ...")
         while len(self.vocab) < self.max_vocab_size:
             max_freq = max(self.stats.values())
             max_keys = [k for k, v in self.stats.items() if v == max_freq]
