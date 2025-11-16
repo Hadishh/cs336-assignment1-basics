@@ -3,7 +3,7 @@ import os
 import pickle as pkl
 
 
-class BPETokenizer:
+class BPETokenizerTrainer:
     def __update_stats(self, key, freq, occurance):
         self.stats[key] = self.stats.get(key, 0) + freq
         if key in self.indices:

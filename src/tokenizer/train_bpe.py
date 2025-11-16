@@ -1,5 +1,5 @@
 import argparse
-from src.tokenizer.bpe.bpe import BPETokenizer
+from src.tokenizer.bpe.bpe_trainer import BPETokenizerTrainer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    tokenizer = BPETokenizer(
+    tokenizer = BPETokenizerTrainer(
         args.input_file, args.vocab_size, args.special_tokens, args.num_proc
     )
 
