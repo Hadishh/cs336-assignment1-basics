@@ -1,6 +1,6 @@
 from src.tokenizer.bpe.pre_tokenization import PreTokenizer
 import os
-import json
+import pickle as pkl
 
 
 class BPETokenizer:
@@ -44,43 +44,32 @@ class BPETokenizer:
                 symbols = (tokens[i], tokens[i + 1])
                 self.__update_stats(symbols, freq, id)
 
-    def __create_new_tokens(self, tokens, max_symbols, tok_id):
+    def __get_new_changes(self, tokens, max_symbols, tok_id):
         new_tokens = []
+        must_add = []
+        must_remove = []
+        prev_new = False
         i = 0
         while i < len(tokens):
+            if prev_new:
+                must_remove.append(i - 1)
+                must_add.append(len(new_tokens) - 1)
             if (
                 i < len(tokens) - 1
                 and tokens[i] == max_symbols[0]
                 and tokens[i + 1] == max_symbols[1]
             ):
                 new_tokens.append(tok_id)
+                if i > 0 and not prev_new:
+                    must_remove.append(i - 1)
+                    must_add.append(len(new_tokens) - 2)
                 i += 2
+                prev_new = True
                 continue
             new_tokens.append(tokens[i])
             i += 1
-        return new_tokens
-
-    def __get_must_removed_indices(self, tokens, max_symbols):
-        must_removed = set()
-        # remove previous stats
-        for i in range(2, len(tokens)):
-            if tokens[i - 2] == max_symbols[0] and tokens[i - 1] == max_symbols[1]:
-                must_removed.add(i - 1)
-            if tokens[i] == max_symbols[1] and tokens[i - 1] == max_symbols[0]:
-                must_removed.add(i - 2)
-
-        return must_removed
-
-    def __get_must_add_indices(self, new_tokens, tok_id):
-        must_add = set()
-        # update stats
-        for i in range(len(new_tokens)):
-            if new_tokens[i] == tok_id:
-                if i > 0:
-                    must_add.add(i - 1)
-                if i + 1 < len(new_tokens):
-                    must_add.add(i)
-        return must_add
+            prev_new = False
+        return new_tokens, must_remove, must_add
 
     def train_bpe(self):
         # we have initialized stats ready
@@ -104,14 +93,14 @@ class BPETokenizer:
 
             for word_id in set(word_ids):
                 word, tokens, freq = self.id2wstats[word_id]
-                new_tokens = self.__create_new_tokens(tokens, max_symbols, tok_id)
+                new_tokens, must_removed, must_add = self.__get_new_changes(
+                    tokens, max_symbols, tok_id
+                )
 
-                must_removed = self.__get_must_removed_indices(tokens, max_symbols)
                 for i in must_removed:
                     key = (tokens[i], tokens[i + 1])
                     self.__remove_stats(key, freq, word_id)
 
-                must_add = self.__get_must_add_indices(new_tokens, tok_id)
                 for i in must_add:
                     key = (new_tokens[i], new_tokens[i + 1])
                     self.__update_stats(key, freq, word_id)
@@ -125,18 +114,14 @@ class BPETokenizer:
 
     def save_state(self, directory):
         os.makedirs(directory, exist_ok=True)
-        vocab_path = os.path.join(directory, "vocab.json")
-        merges_path = os.path.join(directory, "merges.txt")
-        normal_vocab = {key: value.decode("utf-8") for key, value in self.vocab.items()}
-        normal_merges = [
-            "\t".join([x.decode("utf-8"), y.decode("utf-8")]) for x, y in self.merges
-        ]
+        vocab_path = os.path.join(directory, "vocab.pkl")
+        merges_path = os.path.join(directory, "merges.pkl")
 
-        with open(vocab_path, "w") as f:
-            json.dump(normal_vocab, f, indent=4)
+        with open(vocab_path, "wb") as f:
+            pkl.dump(self.vocab, f)
 
-        with open(merges_path, "w") as f:
-            f.write("\n".join(normal_merges))
+        with open(merges_path, "wb") as f:
+            pkl.dump(self.merges, f)
 
         print(f"Saved Vocabulary and Merges into {directory}")
 

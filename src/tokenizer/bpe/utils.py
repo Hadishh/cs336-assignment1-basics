@@ -7,7 +7,7 @@ def split_paragraphs_special_tokens(doc, special_tokens):
     pattern = "(?:" + "|".join(re.escape(tok) for tok in special_tokens) + ")"
     parts = re.split(pattern, doc)
 
-    parts = [p for p in parts if p]
+    parts = [p for p in parts]
 
     return parts
 

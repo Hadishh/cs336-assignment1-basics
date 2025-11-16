@@ -38,7 +38,7 @@ class PreTokenizer:
         assert len(arg_list) <= self.num_processes
 
         file_paths, special_tokens_list, starts, ends, pids = zip(*arg_list)
-        with ProcessPoolExecutor() as executor:
+        with ProcessPoolExecutor(max_workers=16) as executor:
             final_results = list(
                 executor.map(
                     utils.pre_tokenize_chunk,
