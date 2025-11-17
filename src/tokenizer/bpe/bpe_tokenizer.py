@@ -12,8 +12,10 @@ class Tokenizer:
         }
         if special_tokens:
             self.special_tokens = [tok.encode("utf-8") for tok in special_tokens]
+            self.decoded_special_tokens = special_tokens
         else:
             self.special_tokens = []
+            self.decoded_special_tokens = []
         self.pattern = re.compile(
             r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
         )
@@ -36,61 +38,60 @@ class Tokenizer:
 
     def _special_tokens(self, doc, special_tokens):
         if not special_tokens:
-            return [doc]
+            yield doc
+            return
         special_tokens = sorted(set(special_tokens), key=len, reverse=True)
         pattern = "(" + "|".join(re.escape(tok) for tok in special_tokens) + ")"
-        parts = re.split(pattern, doc)
 
-        parts = [p for p in parts if p]
+        last = 0
+        for m in re.finditer(pattern, doc):
+            if m.start() > last:
+                yield doc[last : m.start()]
+            yield m.group(0)
+            last = m.end()
 
-        return parts
+        if last < len(doc):
+            yield doc[last:]
 
     def _pre_tokenize(self, chunk):
-        pre_tokens = []
-        parts = self._special_tokens(
-            chunk, [tok.decode("utf-8") for tok in self.special_tokens]
-        )
-        for part in parts:
-            if part.encode("utf-8") in self.special_tokens:
-                pre_tokens.append(part.encode("utf-8"))
+        for part in self._special_tokens(chunk, self.decoded_special_tokens):
+            if part in self.decoded_special_tokens:
+                yield part.encode("utf-8")
                 continue
             for word in self.pattern.finditer(part):
                 word = word.group().encode("utf-8")
-                pre_tokens.append(word)
-
-        return pre_tokens
+                yield word
 
     def encode(self, text):
-        pre_tokens = self._pre_tokenize(text)
         tokens = []
-        for word in pre_tokens:
+        for word in self._pre_tokenize(text):
             if word in self.special_tokens:
                 tokens.append(self.tok2id[word])
                 continue
 
-            sequence = tuple([self.tok2id[word[i : i + 1]] for i in range(len(word))])
+            sequence = [self.tok2id[word[i : i + 1]] for i in range(len(word))]
 
             while len(sequence) > 1:
-                candidates = []
+                best_candidate = (None, -1, float("inf"))
                 for i in range(0, len(sequence) - 1):
                     new_key = (sequence[i], sequence[i + 1])
-                    if new_key in self.merges:
-                        candidates.append((new_key, i, self.merges[new_key]))
+                    if (
+                        new_key in self.merges
+                        and best_candidate[-1] > self.merges[new_key]
+                    ):
+                        best_candidate = (new_key, i, self.merges[new_key])
 
-                if not candidates:
+                if not best_candidate[0]:
                     break
 
                 # choose the earliest merge
-                merge, idx, _ = sorted(candidates, key=lambda triple: triple[2])[0]
+                merge, idx, _ = best_candidate
 
                 merged_token = b"".join((self.vocab[merge[0]], self.vocab[merge[1]]))
-                new_sequence = sequence[:idx] + (self.tok2id[merged_token],)
-                if idx < len(sequence) - 2:
-                    new_sequence += sequence[idx + 2 :]
 
-                sequence = new_sequence
+                sequence[idx : idx + 2] = [self.tok2id[merged_token]]
 
-            tokens.extend(list(sequence))
+            tokens.extend(sequence)
 
         return tokens
 
@@ -109,8 +110,10 @@ if __name__ == "__main__":
         test_tinystories_matches_tiktoken,
         test_overlapping_special_tokens,
         test_address_matches_tiktoken,
+        test_encode_memory_usage,
     )
 
+    test_encode_memory_usage()
     test_address_matches_tiktoken()
     test_overlapping_special_tokens()
     test_tinystories_matches_tiktoken()
