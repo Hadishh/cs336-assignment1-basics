@@ -1,5 +1,6 @@
 import pickle as pkl
 import regex as re
+from array import array
 
 
 class Tokenizer:
@@ -13,9 +14,20 @@ class Tokenizer:
         if special_tokens:
             self.special_tokens = [tok.encode("utf-8") for tok in special_tokens]
             self.decoded_special_tokens = special_tokens
+            self.decoded_special_tokens = sorted(
+                set(special_tokens), key=len, reverse=True
+            )
+            pattern = (
+                "("
+                + "|".join(re.escape(tok) for tok in self.decoded_special_tokens)
+                + ")"
+            )
+            self.special_pattern = re.compile(pattern)
         else:
             self.special_tokens = []
             self.decoded_special_tokens = []
+            self.special_pattern = None
+
         self.pattern = re.compile(
             r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
         )
@@ -24,6 +36,12 @@ class Tokenizer:
             if not (special_token in self.tok2id):
                 self.vocab[len(vocab)] = special_token
                 self.tok2id[special_token] = len(self.tok2id)
+
+        self.merge_to_id = dict()
+        for (left_id, right_id), idx in list(self.merges.items()):
+            merged_token = self.vocab[left_id] + self.vocab[right_id]
+            merged_id = self.tok2id[merged_token]
+            self.merge_to_id[(left_id, right_id)] = merged_id
 
     @classmethod
     def from_files(cls, vocab_filepath, merges_filepath, special_tokens=None):
@@ -37,14 +55,11 @@ class Tokenizer:
         return cls(vocab=vocab, merges=merges, special_tokens=special_tokens)
 
     def _special_tokens(self, doc, special_tokens):
-        if not special_tokens:
+        if not self.special_pattern:
             yield doc
             return
-        special_tokens = sorted(set(special_tokens), key=len, reverse=True)
-        pattern = "(" + "|".join(re.escape(tok) for tok in special_tokens) + ")"
-
         last = 0
-        for m in re.finditer(pattern, doc):
+        for m in self.special_pattern.finditer(doc):
             if m.start() > last:
                 yield doc[last : m.start()]
             yield m.group(0)
@@ -63,41 +78,38 @@ class Tokenizer:
                 yield word
 
     def encode(self, text):
-        tokens = []
-        for word in self._pre_tokenize(text):
-            if word in self.special_tokens:
-                tokens.append(self.tok2id[word])
-                continue
-
-            sequence = [self.tok2id[word[i : i + 1]] for i in range(len(word))]
-
-            while len(sequence) > 1:
-                best_candidate = (None, -1, float("inf"))
-                for i in range(0, len(sequence) - 1):
-                    new_key = (sequence[i], sequence[i + 1])
-                    if (
-                        new_key in self.merges
-                        and best_candidate[-1] > self.merges[new_key]
-                    ):
-                        best_candidate = (new_key, i, self.merges[new_key])
-
-                if not best_candidate[0]:
-                    break
-
-                # choose the earliest merge
-                merge, idx, _ = best_candidate
-
-                merged_token = b"".join((self.vocab[merge[0]], self.vocab[merge[1]]))
-
-                sequence[idx : idx + 2] = [self.tok2id[merged_token]]
-
-            tokens.extend(sequence)
-
-        return tokens
+        return list(self.encode_iterable([text]))
 
     def encode_iterable(self, iterable):
         for text in iterable:
-            yield from self.encode(text)
+            for word in self._pre_tokenize(text):
+                if word in self.special_tokens:
+                    yield self.tok2id[word]
+                    continue
+
+                sequence = [self.tok2id[word[i : i + 1]] for i in range(len(word))]
+
+                while len(sequence) > 1:
+                    best_candidate = (None, -1, float("inf"))
+                    for i in range(0, len(sequence) - 1):
+                        new_key = (sequence[i], sequence[i + 1])
+                        if (
+                            new_key in self.merges
+                            and best_candidate[-1] > self.merges[new_key]
+                        ):
+                            best_candidate = (new_key, i, self.merges[new_key])
+
+                    if not best_candidate[0]:
+                        break
+
+                    # choose the earliest merge
+                    merge, idx, _ = best_candidate
+
+                    merged_id = self.merge_to_id[merge]
+
+                    sequence[idx : idx + 2] = [merged_id]
+
+                yield from sequence
 
     def decode(self, ids):
         ids = [self.vocab.get(id, -1) for id in ids]
