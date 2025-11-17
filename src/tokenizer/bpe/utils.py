@@ -4,6 +4,8 @@ from tqdm import tqdm
 
 
 def split_paragraphs_special_tokens(doc, special_tokens):
+    if not special_tokens:
+        return [doc]
     special_tokens = sorted(set(special_tokens), key=len, reverse=True)
     pattern = "(?:" + "|".join(re.escape(tok) for tok in special_tokens) + ")"
     parts = re.split(pattern, doc)
