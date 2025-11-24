@@ -94,7 +94,5 @@ class SwiGLU(torch.nn.Module):
 
         return self.L2(x2)
 
-    def load_state_dict(self, state_dict, strict=True, assign=False):
-        self.L1.load_state_dict({"weights": state_dict["w1"]})
-        self.L2.load_state_dict({"weights": state_dict["w2"]})
-        self.L3.load_state_dict({"weights": state_dict["w3"]})
+
+# class RotaryPositionalEmbeddings(torch.nn.Module):
