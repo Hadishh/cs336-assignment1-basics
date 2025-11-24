@@ -58,3 +58,43 @@ class RMSNorm(torch.nn.Module):
         return einops.einsum(
             x, self.g, "batch seq_len d_model, d_model -> batch seq_len d_model"
         ).to(dtype=x_type)
+
+
+class SiLU(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        sig = torch.nn.functional.sigmoid(x)
+
+        return x * sig
+
+
+class SwiGLU(torch.nn.Module):
+    def __init__(self, d_model, d_ff, device=None, dtype=None):
+        super().__init__()
+
+        self.L1 = Linear(
+            in_features=d_model, out_features=d_ff, device=device, dtype=dtype
+        )
+        self.L2 = Linear(
+            in_features=d_ff, out_features=d_model, device=device, dtype=dtype
+        )
+        self.L3 = Linear(
+            in_features=d_model, out_features=d_ff, device=device, dtype=dtype
+        )
+        self.SiLU = SiLU()
+
+    def forward(self, x: torch.Tensor):
+
+        x1 = self.SiLU(self.L1(x))
+        x3 = self.L3(x)
+
+        x2 = einops.einsum(x1, x3, "... dff, ... dff -> ... dff")
+
+        return self.L2(x2)
+
+    def load_state_dict(self, state_dict, strict=True, assign=False):
+        self.L1.load_state_dict({"weights": state_dict["w1"]})
+        self.L2.load_state_dict({"weights": state_dict["w2"]})
+        self.L3.load_state_dict({"weights": state_dict["w3"]})
