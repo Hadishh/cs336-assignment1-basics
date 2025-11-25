@@ -12,7 +12,7 @@ from torch import Tensor
 from src.tokenizer.bpe.bpe_trainer import BPETokenizerTrainer
 from src.tokenizer.bpe.bpe_tokenizer import Tokenizer
 
-from src.nn.base import Linear, Embedding, RMSNorm, SwiGLU, RotaryPositionalEmbeddings
+from src.nn.utils import Linear, Embedding, RMSNorm, SwiGLU, RotaryPositionalEmbeddings
 
 
 def run_linear(
