@@ -95,4 +95,43 @@ class SwiGLU(torch.nn.Module):
         return self.L2(x2)
 
 
-# class RotaryPositionalEmbeddings(torch.nn.Module):
+class RotaryPositionalEmbeddings(torch.nn.Module):
+    def __init__(self, d_k, theta, max_seq_len, device=None):
+        super().__init__()
+
+        r = [[] for i in range(max_seq_len)]
+        self.theta = theta
+        seq_len_ind = torch.arange(0, max_seq_len, device=device).unsqueeze(1)
+        k_theta = torch.arange(0, d_k // 2, device=device).unsqueeze(0)
+
+        k_theta = self.theta ** (2 * k_theta / d_k)
+        k_theta = k_theta.repeat(max_seq_len, 1)
+        k_theta = seq_len_ind / k_theta
+        k_theta = einops.repeat(k_theta, "L k -> L (k r)", r=2)  # theta matrix is ready
+
+        sin = torch.sin(k_theta)
+        cos = torch.cos(k_theta)
+
+        # of shape (max_seq_len, d_k)
+        self.register_buffer(name="cos", tensor=cos, persistent=False)
+        self.register_buffer(name="sin", tensor=sin, persistent=False)
+
+    def forward(self, x, token_inds):
+
+        cos = self.cos[token_inds]  # (seq_len, d_k)
+        sin = self.sin[token_inds]  # (seq_len, d_k)
+
+        temp = einops.rearrange(
+            x, "... (p a) -> ... p a", a=2
+        )  # (..., seq_len, d_k//2, 2)
+        temp = temp[..., [1, 0]]
+        temp = einops.rearrange(temp, "... p a -> ... (p a)")  # (..., seq_len, d_k)
+        mul = 1 - 2 * (
+            (1 + torch.arange(temp.shape[-1], device=x.device)) % 2
+        )  # [-1, 1, -1, 1, ..]
+        temp = temp * mul
+
+        cos = einops.einsum(x, cos, "... seq_len d, seq_len d -> ... seq_len d")
+        sin = einops.einsum(temp, sin, "... seq_len d, seq_len d -> ... seq_len d")
+
+        return sin + cos
