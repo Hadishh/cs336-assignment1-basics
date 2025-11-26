@@ -146,3 +146,25 @@ def softmax(in_features: torch.Tensor, dim: int):
     sum_ = torch.sum(exp_, dim=dim, keepdim=True)
 
     return exp_ / sum_
+
+
+def scaled_dot_product_attention(
+    Q: torch.Tensor, K: torch.Tensor, V: torch.Tensor, mask: torch.Tensor = None
+):
+
+    d_k = K.shape[-1]
+    attn = einops.einsum(Q, K, "... queries d_k, ... keys d_k -> ... queries keys")
+
+    attn = attn / math.sqrt(d_k)
+
+    if mask is not None:
+        inf = torch.where(mask, torch.tensor(0), -torch.inf).to(
+            device=Q.device, dtype=Q.dtype
+        )
+        attn = attn + inf
+
+    attn = softmax(attn, dim=-1)
+
+    attn = einops.einsum(attn, V, "... queries keys, ... keys d_v -> ... queries d_v")
+
+    return attn
