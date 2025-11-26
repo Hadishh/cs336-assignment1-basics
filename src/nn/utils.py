@@ -199,7 +199,7 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
             d_k, theta=theta, max_seq_len=max_sequence_len, device=device
         )
 
-    def _multihead_attention(self, Q, K, V, token_positions=None):
+    def __multihead_attention(self, Q, K, V, token_positions=None):
         # Q shape = (b, seq_len, d_model)
         d_k = d_v = self.d_model // self.num_heads
         seq_len = Q.shape[-2]
@@ -241,7 +241,7 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         K = self.WK(x)  # (... seq_len d_model)
         V = self.WV(x)  # (... seq_len d_model)
 
-        multihead = self._multihead_attention(Q, K, V, token_positions)
+        multihead = self.__multihead_attention(Q, K, V, token_positions)
 
         out = self.WO(multihead)
 
