@@ -26,7 +26,7 @@ class PreTokenizer:
             arg_list.append(
                 (
                     self.file_path,
-                    [self.split_special_token.decode("utf-8")],
+                    self.split_special_token.decode("utf-8"),
                     start,
                     end,
                     pid,

@@ -43,7 +43,7 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
     linear = Linear(d_in, d_out)
-    linear.load_state_dict({"weights": weights})
+    linear.load_state_dict({"weight": weights})
 
     return linear(in_features)
 
@@ -67,7 +67,7 @@ def run_embedding(
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
     embedding = Embedding(vocab_size, d_model)
-    embedding.load_state_dict({"embeddings": weights})
+    embedding.load_state_dict({"weight": weights})
 
     return embedding(token_ids)
 
@@ -103,7 +103,7 @@ def run_swiglu(
     # swiglu.w3.weight.data = w3_weight
     swiglu = SwiGLU(d_model=d_model, d_ff=d_ff)
     swiglu.load_state_dict(
-        {"L1.weights": w1_weight, "L2.weights": w2_weight, "L3.weights": w3_weight}
+        {"L1.weight": w1_weight, "L2.weight": w2_weight, "L3.weight": w3_weight}
     )
 
     return swiglu(in_features)
@@ -165,10 +165,10 @@ def run_multihead_self_attention(
 
     mhattn.load_state_dict(
         {
-            "WK.weights": k_proj_weight,
-            "WQ.weights": q_proj_weight,
-            "WV.weights": v_proj_weight,
-            "WO.weights": o_proj_weight,
+            "k_proj.weight": k_proj_weight,
+            "q_proj.weight": q_proj_weight,
+            "v_proj.weight": v_proj_weight,
+            "output_proj.weight": o_proj_weight,
         }
     )
 
@@ -218,10 +218,10 @@ def run_multihead_self_attention_with_rope(
 
     mhattn.load_state_dict(
         {
-            "WK.weights": k_proj_weight,
-            "WQ.weights": q_proj_weight,
-            "WV.weights": v_proj_weight,
-            "WO.weights": o_proj_weight,
+            "k_proj.weight": k_proj_weight,
+            "q_proj.weight": q_proj_weight,
+            "v_proj.weight": v_proj_weight,
+            "output_proj.weight": o_proj_weight,
         }
     )
 
@@ -428,7 +428,7 @@ def run_rmsnorm(
         RMSNorm of the `in_features`.
     """
     rmsnorm = RMSNorm(d_model, eps=eps)
-    rmsnorm.load_state_dict({"g": weights})
+    rmsnorm.load_state_dict({"weight": weights})
 
     return rmsnorm(in_features)
 

@@ -12,10 +12,10 @@ class Linear(torch.nn.Module):
         w = torch.nn.init.trunc_normal_(
             w, mean=0, std=sigma * sigma, a=-3 * sigma, b=3 * sigma
         )
-        self.weights = torch.nn.Parameter(w)
+        self.weight = torch.nn.Parameter(w)
 
     def forward(self, x: torch.Tensor):
-        return einops.einsum(self.weights, x, "d_out d_in, ... d_in -> ... d_out")
+        return einops.einsum(self.weight, x, "d_out d_in, ... d_in -> ... d_out")
 
 
 class Embedding(torch.nn.Module):
@@ -27,10 +27,10 @@ class Embedding(torch.nn.Module):
         )
         e = torch.nn.init.trunc_normal_(e, mean=0, std=1, a=-3, b=3)
 
-        self.embeddings = torch.nn.Parameter(e)
+        self.weight = torch.nn.Parameter(e)
 
     def forward(self, token_ids: torch.Tensor):
-        return self.embeddings[token_ids]
+        return self.weight[token_ids]
 
 
 class RMSNorm(torch.nn.Module):
@@ -39,7 +39,7 @@ class RMSNorm(torch.nn.Module):
 
         g = torch.ones(size=(d_model,), device=device, dtype=dtype)
 
-        self.g = torch.nn.Parameter(g)
+        self.weight = torch.nn.Parameter(g)
         self.epsilon = torch.Tensor([eps])
 
     def forward(self, x: torch.Tensor):
@@ -56,7 +56,7 @@ class RMSNorm(torch.nn.Module):
         x = x / rms
 
         return einops.einsum(
-            x, self.g, "batch seq_len d_model, d_model -> batch seq_len d_model"
+            x, self.weight, "batch seq_len d_model, d_model -> batch seq_len d_model"
         ).to(dtype=x_type)
 
 
@@ -190,10 +190,10 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
 
         d_k = d_v = d_model // num_heads
 
-        self.WK = Linear(num_heads * d_k, d_model, device=device, dtype=dtype)
-        self.WQ = Linear(num_heads * d_k, d_model, device=device, dtype=dtype)
-        self.WV = Linear(num_heads * d_v, d_model, device=device, dtype=dtype)
-        self.WO = Linear(d_model, num_heads * d_v, device=device, dtype=dtype)
+        self.k_proj = Linear(num_heads * d_k, d_model, device=device, dtype=dtype)
+        self.q_proj = Linear(num_heads * d_k, d_model, device=device, dtype=dtype)
+        self.v_proj = Linear(num_heads * d_v, d_model, device=device, dtype=dtype)
+        self.output_proj = Linear(d_model, num_heads * d_v, device=device, dtype=dtype)
 
         self.RoPE = RotaryPositionalEmbeddings(
             d_k, theta=theta, max_seq_len=max_sequence_len, device=device
@@ -237,12 +237,12 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
 
     def forward(self, x, token_positions=None):
 
-        Q = self.WQ(x)  # (... seq_len d_model)
-        K = self.WK(x)  # (... seq_len d_model)
-        V = self.WV(x)  # (... seq_len d_model)
+        Q = self.q_proj(x)  # (... seq_len d_model)
+        K = self.k_proj(x)  # (... seq_len d_model)
+        V = self.v_proj(x)  # (... seq_len d_model)
 
         multihead = self.__multihead_attention(Q, K, V, token_positions)
 
-        out = self.WO(multihead)
+        out = self.output_proj(multihead)
 
         return out
