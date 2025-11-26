@@ -135,3 +135,14 @@ class RotaryPositionalEmbeddings(torch.nn.Module):
         sin = einops.einsum(temp, sin, "... seq_len d, seq_len d -> ... seq_len d")
 
         return sin + cos
+
+
+def softmax(in_features: torch.Tensor, dim: int):
+
+    max_ = in_features.max(dim=dim, keepdim=True).values
+    v = in_features - max_
+
+    exp_ = torch.exp(v)
+    sum_ = torch.sum(exp_, dim=dim, keepdim=True)
+
+    return exp_ / sum_
