@@ -20,6 +20,7 @@ from src.nn.utils import (
     RotaryPositionalEmbeddings,
     softmax,
     scaled_dot_product_attention,
+    CausalMultiHeadSelfAttention,
 )
 
 
@@ -160,7 +161,18 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mhattn = CausalMultiHeadSelfAttention(d_model, num_heads, max_sequence_len=2)
+
+    mhattn.load_state_dict(
+        {
+            "WK.weights": k_proj_weight,
+            "WQ.weights": q_proj_weight,
+            "WV.weights": v_proj_weight,
+            "WO.weights": o_proj_weight,
+        }
+    )
+
+    return mhattn(in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -200,7 +212,20 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    mhattn = CausalMultiHeadSelfAttention(
+        d_model, num_heads, max_sequence_len=max_seq_len, theta=theta, use_rope=True
+    )
+
+    mhattn.load_state_dict(
+        {
+            "WK.weights": k_proj_weight,
+            "WQ.weights": q_proj_weight,
+            "WV.weights": v_proj_weight,
+            "WO.weights": o_proj_weight,
+        }
+    )
+
+    return mhattn(in_features, token_positions)
 
 
 def run_rope(

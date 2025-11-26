@@ -120,7 +120,6 @@ class RotaryPositionalEmbeddings(torch.nn.Module):
 
         cos = self.cos[token_inds]  # (seq_len, d_k)
         sin = self.sin[token_inds]  # (seq_len, d_k)
-
         temp = einops.rearrange(
             x, "... (p a) -> ... p a", a=2
         )  # (..., seq_len, d_k//2, 2)
@@ -131,8 +130,8 @@ class RotaryPositionalEmbeddings(torch.nn.Module):
         )  # [-1, 1, -1, 1, ..]
         temp = temp * mul
 
-        cos = einops.einsum(x, cos, "... seq_len d, seq_len d -> ... seq_len d")
-        sin = einops.einsum(temp, sin, "... seq_len d, seq_len d -> ... seq_len d")
+        cos = einops.einsum(x, cos, "... seq_len d, ... seq_len d -> ... seq_len d")
+        sin = einops.einsum(temp, sin, "... seq_len d, ... seq_len d -> ... seq_len d")
 
         return sin + cos
 
@@ -168,3 +167,82 @@ def scaled_dot_product_attention(
     attn = einops.einsum(attn, V, "... queries keys, ... keys d_v -> ... queries d_v")
 
     return attn
+
+
+class CausalMultiHeadSelfAttention(torch.nn.Module):
+    def __init__(
+        self,
+        d_model,
+        num_heads,
+        max_sequence_len,
+        theta=1000.0,
+        use_rope=False,
+        device=None,
+        dtype=None,
+    ):
+        super().__init__()
+
+        assert d_model % num_heads == 0
+
+        self.num_heads = num_heads
+        self.d_model = d_model
+        self.use_rope = use_rope
+
+        d_k = d_v = d_model // num_heads
+
+        self.WK = Linear(num_heads * d_k, d_model, device=device, dtype=dtype)
+        self.WQ = Linear(num_heads * d_k, d_model, device=device, dtype=dtype)
+        self.WV = Linear(num_heads * d_v, d_model, device=device, dtype=dtype)
+        self.WO = Linear(d_model, num_heads * d_v, device=device, dtype=dtype)
+
+        self.RoPE = RotaryPositionalEmbeddings(
+            d_k, theta=theta, max_seq_len=max_sequence_len, device=device
+        )
+
+    def _multihead_attention(self, Q, K, V, token_positions=None):
+        # Q shape = (b, seq_len, d_model)
+        d_k = d_v = self.d_model // self.num_heads
+        seq_len = Q.shape[-2]
+        batch_s = Q.shape[0]
+        Q = einops.rearrange(
+            Q, "... seq (h dk) -> ... h seq dk", h=self.num_heads, dk=d_k
+        )
+        K = einops.rearrange(
+            K, "... seq (h dk) -> ... h seq dk", h=self.num_heads, dk=d_k
+        )
+        V = einops.rearrange(
+            V, "... seq (h dv) -> ... h seq dv", h=self.num_heads, dv=d_v
+        )
+
+        if self.use_rope:
+            Q = einops.rearrange(Q, "b h seq dk -> (b h) seq dk")
+            Q = self.RoPE(Q, token_positions)
+            Q = einops.rearrange(
+                Q, "(b h) seq dk -> b h seq dk", b=batch_s, h=self.num_heads
+            )
+
+            K = einops.rearrange(K, "b h seq dk -> (b h) seq dk")
+            K = self.RoPE(K, token_positions)
+            K = einops.rearrange(
+                K, "(b h) seq dk -> b h seq dk", b=batch_s, h=self.num_heads
+            )
+
+        mask = torch.ones((seq_len, seq_len), device=Q.device)
+        mask = 1 - torch.triu(mask, diagonal=1)
+        multiheadattn = scaled_dot_product_attention(Q, K, V, mask.bool())
+
+        out = einops.rearrange(multiheadattn, "... h seq d_v -> ... seq (h d_v)")
+
+        return out
+
+    def forward(self, x, token_positions=None):
+
+        Q = self.WQ(x)  # (... seq_len d_model)
+        K = self.WK(x)  # (... seq_len d_model)
+        V = self.WV(x)  # (... seq_len d_model)
+
+        multihead = self._multihead_attention(Q, K, V, token_positions)
+
+        out = self.WO(multihead)
+
+        return out
