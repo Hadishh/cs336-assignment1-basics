@@ -215,7 +215,6 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
 
         if self.use_rope:
             Q = self.RoPE(Q, token_positions)
-
             K = self.RoPE(K, token_positions)
 
         mask = torch.ones((seq_len, seq_len), device=Q.device)
