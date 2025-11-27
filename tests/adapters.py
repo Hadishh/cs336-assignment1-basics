@@ -424,14 +424,15 @@ def run_transformer_lm(
         next-word distribution for each token.
     """
     lm = Transformer(
-        vocab_size,
-        context_length,
-        num_layers,
-        d_model,
-        num_heads,
-        d_ff,
-        rope_theta,
-        in_indices.device,
+        vocab_size=vocab_size,
+        context_length=context_length,
+        num_layers=num_layers,
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        theta=rope_theta,
+        device=in_indices.device,
+        dtype=torch.float32,
     )
     lm.load_state_dict(weights)
 

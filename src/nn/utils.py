@@ -132,7 +132,7 @@ class RotaryPositionalEmbeddings(torch.nn.Module):
         cos = einops.einsum(x, cos, "... seq_len d, ... seq_len d -> ... seq_len d")
         sin = einops.einsum(temp, sin, "... seq_len d, ... seq_len d -> ... seq_len d")
 
-        return sin + cos
+        return (sin + cos).to(device=x.device, dtype=x.dtype)
 
 
 def softmax(in_features: torch.Tensor, dim: int):
@@ -212,8 +212,9 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
             Q = self.RoPE(Q, token_positions)
             K = self.RoPE(K, token_positions)
 
-        mask = torch.ones((seq_len, seq_len), device=Q.device)
+        mask = torch.ones((seq_len, seq_len))
         mask = 1 - torch.triu(mask, diagonal=1)
+        mask = mask.to(device=Q.device, dtype=Q.dtype)
         multiheadattn = scaled_dot_product_attention(Q, K, V, mask.bool())
 
         out = einops.rearrange(multiheadattn, "... h seq d_v -> ... seq (h d_v)")

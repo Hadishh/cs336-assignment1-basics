@@ -1,6 +1,6 @@
 import torch
 from src.nn.tranfromer_layer import TransformerLayer
-from src.nn.utils import RotaryPositionalEmbeddings, Embedding, RMSNorm, Linear, softmax
+from src.nn.utils import RotaryPositionalEmbeddings, Embedding, RMSNorm, Linear
 
 
 class Transformer(torch.nn.Module):
@@ -17,8 +17,6 @@ class Transformer(torch.nn.Module):
         dtype=None,
     ):
         super().__init__()
-
-        self.num_layers = num_layers
 
         self.rope = RotaryPositionalEmbeddings(
             d_k=d_model // num_heads,
@@ -55,4 +53,4 @@ class Transformer(torch.nn.Module):
 
         x = self.lm_head(x)
 
-        return softmax(x, dim=-1)
+        return x
