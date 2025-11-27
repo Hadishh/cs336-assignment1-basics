@@ -11,7 +11,7 @@ from torch import Tensor
 
 from src.tokenizer.bpe.bpe_trainer import BPETokenizerTrainer
 from src.tokenizer.bpe.bpe_tokenizer import Tokenizer
-
+import einops
 from src.nn.utils import (
     Linear,
     Embedding,
@@ -22,6 +22,8 @@ from src.nn.utils import (
     scaled_dot_product_attention,
     CausalMultiHeadSelfAttention,
 )
+
+from src.nn.tranfromer_layer import TransformerLayer
 
 
 def run_linear(
@@ -103,7 +105,7 @@ def run_swiglu(
     # swiglu.w3.weight.data = w3_weight
     swiglu = SwiGLU(d_model=d_model, d_ff=d_ff)
     swiglu.load_state_dict(
-        {"L1.weight": w1_weight, "L2.weight": w2_weight, "L3.weight": w3_weight}
+        {"w1.weight": w1_weight, "w2.weight": w2_weight, "w3.weight": w3_weight}
     )
 
     return swiglu(in_features)
@@ -322,7 +324,22 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+    layer = TransformerLayer(
+        d_model=d_model,
+        num_heads=num_heads,
+        d_ff=d_ff,
+        max_seq_len=max_seq_len,
+        theta=theta,
+        use_rope=True,
+    )
+    batch_size = in_features.shape[0]
+    seq_len = in_features.shape[1]
+    token_positions = torch.arange(seq_len, device=in_features.device)
+    token_positions = einops.repeat(token_positions, "seq -> b seq", b=batch_size)
+
+    layer.load_state_dict(weights)
+    # print(token_positions.shape)
+    return layer(in_features, token_positions)
 
 
 def run_transformer_lm(

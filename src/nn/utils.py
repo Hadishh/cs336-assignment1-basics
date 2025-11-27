@@ -74,25 +74,25 @@ class SwiGLU(torch.nn.Module):
     def __init__(self, d_model, d_ff, device=None, dtype=None):
         super().__init__()
 
-        self.L1 = Linear(
+        self.w1 = Linear(
             in_features=d_model, out_features=d_ff, device=device, dtype=dtype
         )
-        self.L2 = Linear(
+        self.w2 = Linear(
             in_features=d_ff, out_features=d_model, device=device, dtype=dtype
         )
-        self.L3 = Linear(
+        self.w3 = Linear(
             in_features=d_model, out_features=d_ff, device=device, dtype=dtype
         )
         self.SiLU = SiLU()
 
     def forward(self, x: torch.Tensor):
 
-        x1 = self.SiLU(self.L1(x))
-        x3 = self.L3(x)
+        x1 = self.SiLU(self.w1(x))
+        x3 = self.w3(x)
 
         x2 = einops.einsum(x1, x3, "... dff, ... dff -> ... dff")
 
-        return self.L2(x2)
+        return self.w2(x2)
 
 
 class RotaryPositionalEmbeddings(torch.nn.Module):
@@ -129,7 +129,6 @@ class RotaryPositionalEmbeddings(torch.nn.Module):
             (1 + torch.arange(temp.shape[-1], device=x.device)) % 2
         )  # [-1, 1, -1, 1, ..]
         temp = temp * mul
-
         cos = einops.einsum(x, cos, "... seq_len d, ... seq_len d -> ... seq_len d")
         sin = einops.einsum(temp, sin, "... seq_len d, ... seq_len d -> ... seq_len d")
 
@@ -215,17 +214,9 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         )
 
         if self.use_rope:
-            Q = einops.rearrange(Q, "b h seq dk -> (b h) seq dk")
             Q = self.RoPE(Q, token_positions)
-            Q = einops.rearrange(
-                Q, "(b h) seq dk -> b h seq dk", b=batch_s, h=self.num_heads
-            )
 
-            K = einops.rearrange(K, "b h seq dk -> (b h) seq dk")
             K = self.RoPE(K, token_positions)
-            K = einops.rearrange(
-                K, "(b h) seq dk -> b h seq dk", b=batch_s, h=self.num_heads
-            )
 
         mask = torch.ones((seq_len, seq_len), device=Q.device)
         mask = 1 - torch.triu(mask, diagonal=1)
