@@ -16,6 +16,7 @@ from src.nn.utils import (
     Linear,
     Embedding,
     RMSNorm,
+    SiLU,
     SwiGLU,
     RotaryPositionalEmbeddings,
     softmax,
@@ -24,6 +25,7 @@ from src.nn.utils import (
 )
 
 from src.nn.tranfromer_layer import TransformerLayer
+from src.nn.transformer import Transformer
 
 
 def run_linear(
@@ -218,7 +220,7 @@ def run_multihead_self_attention_with_rope(
     rope = RotaryPositionalEmbeddings(
         d_k, theta=theta, max_seq_len=max_seq_len, device=in_features.device
     )
-    mhattn = CausalMultiHeadSelfAttention(d_model, num_heads, rope=rope, theta=theta)
+    mhattn = CausalMultiHeadSelfAttention(d_model, num_heads, rope=rope)
 
     mhattn.load_state_dict(
         {
@@ -331,9 +333,7 @@ def run_transformer_block(
     rope = RotaryPositionalEmbeddings(
         d_k, theta=theta, max_seq_len=max_seq_len, device=in_features.device
     )
-    layer = TransformerLayer(
-        d_model=d_model, num_heads=num_heads, d_ff=d_ff, rope=rope, theta=theta
-    )
+    layer = TransformerLayer(d_model=d_model, num_heads=num_heads, d_ff=d_ff, rope=rope)
     batch_size = in_features.shape[0]
     seq_len = in_features.shape[1]
     token_positions = torch.arange(seq_len, device=in_features.device)
@@ -423,7 +423,24 @@ def run_transformer_lm(
         Float[Tensor, "batch_size sequence_length vocab_size"]: Tensor with the predicted unnormalized
         next-word distribution for each token.
     """
-    raise NotImplementedError
+    lm = Transformer(
+        vocab_size,
+        context_length,
+        num_layers,
+        d_model,
+        num_heads,
+        d_ff,
+        rope_theta,
+        in_indices.device,
+    )
+    lm.load_state_dict(weights)
+
+    token_positions = torch.arange(in_indices.shape[-1], device=in_indices.device)
+    token_positions = einops.repeat(
+        token_positions, "seq -> b seq", b=in_indices.shape[0]
+    )
+
+    return lm(in_indices, token_positions)
 
 
 def run_rmsnorm(
@@ -463,7 +480,9 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
         Float[Tensor,"..."]: of with the same shape as `in_features` with the output of applying
         SiLU to each element.
     """
-    raise NotImplementedError
+    silu = SiLU()
+
+    return silu(in_features)
 
 
 def run_get_batch(

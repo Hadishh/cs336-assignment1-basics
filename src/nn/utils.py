@@ -174,7 +174,6 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         d_model,
         num_heads,
         rope=None,
-        theta=1000.0,
         device=None,
         dtype=None,
     ):
