@@ -163,7 +163,7 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    mhattn = CausalMultiHeadSelfAttention(d_model, num_heads, max_sequence_len=2)
+    mhattn = CausalMultiHeadSelfAttention(d_model, num_heads)
 
     mhattn.load_state_dict(
         {
@@ -214,9 +214,11 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    mhattn = CausalMultiHeadSelfAttention(
-        d_model, num_heads, max_sequence_len=max_seq_len, theta=theta, use_rope=True
+    d_k = d_model // num_heads
+    rope = RotaryPositionalEmbeddings(
+        d_k, theta=theta, max_seq_len=max_seq_len, device=in_features.device
     )
+    mhattn = CausalMultiHeadSelfAttention(d_model, num_heads, rope=rope, theta=theta)
 
     mhattn.load_state_dict(
         {
@@ -324,13 +326,13 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
+
+    d_k = d_model // num_heads
+    rope = RotaryPositionalEmbeddings(
+        d_k, theta=theta, max_seq_len=max_seq_len, device=in_features.device
+    )
     layer = TransformerLayer(
-        d_model=d_model,
-        num_heads=num_heads,
-        d_ff=d_ff,
-        max_seq_len=max_seq_len,
-        theta=theta,
-        use_rope=True,
+        d_model=d_model, num_heads=num_heads, d_ff=d_ff, rope=rope, theta=theta
     )
     batch_size = in_features.shape[0]
     seq_len = in_features.shape[1]

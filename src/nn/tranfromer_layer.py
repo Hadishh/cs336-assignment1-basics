@@ -10,9 +10,8 @@ class TransformerLayer(torch.nn.Module):
         d_model,
         num_heads,
         d_ff,
-        max_seq_len,
+        rope=None,
         theta=1000.0,
-        use_rope=False,
         device=None,
         dtype=None,
     ):
@@ -20,7 +19,7 @@ class TransformerLayer(torch.nn.Module):
         self.ln1 = RMSNorm(d_model, device=device, dtype=dtype)
         self.ln2 = RMSNorm(d_model, device=device, dtype=dtype)
         self.attn = CausalMultiHeadSelfAttention(
-            d_model, num_heads, max_seq_len, theta, use_rope, device=device, dtype=dtype
+            d_model, num_heads, rope, theta, device=device, dtype=dtype
         )
         self.ffn = SwiGLU(d_model, d_ff, device=device, dtype=dtype)
 

@@ -173,9 +173,8 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         self,
         d_model,
         num_heads,
-        max_sequence_len,
+        rope=None,
         theta=1000.0,
-        use_rope=False,
         device=None,
         dtype=None,
     ):
@@ -185,7 +184,6 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
 
         self.num_heads = num_heads
         self.d_model = d_model
-        self.use_rope = use_rope
 
         d_k = d_v = d_model // num_heads
 
@@ -194,9 +192,7 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         self.v_proj = Linear(num_heads * d_v, d_model, device=device, dtype=dtype)
         self.output_proj = Linear(d_model, num_heads * d_v, device=device, dtype=dtype)
 
-        self.RoPE = RotaryPositionalEmbeddings(
-            d_k, theta=theta, max_seq_len=max_sequence_len, device=device
-        )
+        self.RoPE = rope
 
     def __multihead_attention(self, Q, K, V, token_positions=None):
         # Q shape = (b, seq_len, d_model)
@@ -213,7 +209,7 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
             V, "... seq (h dv) -> ... h seq dv", h=self.num_heads, dv=d_v
         )
 
-        if self.use_rope:
+        if self.RoPE is not None:
             Q = self.RoPE(Q, token_positions)
             K = self.RoPE(K, token_positions)
 
