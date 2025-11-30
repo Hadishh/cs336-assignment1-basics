@@ -29,7 +29,7 @@ from src.nn.tranfromer_layer import TransformerLayer
 from src.nn.transformer import Transformer
 
 from src.optim import AdamW
-from src.utils import learning_rate_cosine_schedule
+from src.utils import learning_rate_cosine_schedule, gradient_clipping
 
 
 def run_linear(
@@ -558,7 +558,7 @@ def run_gradient_clipping(
 
     The gradients of the parameters (parameter.grad) should be modified in-place.
     """
-    raise NotImplementedError
+    gradient_clipping(parameters, max_l2_norm)
 
 
 def get_adamw_cls() -> Any:
