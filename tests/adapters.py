@@ -28,6 +28,8 @@ from src.nn.utils import (
 from src.nn.tranfromer_layer import TransformerLayer
 from src.nn.transformer import Transformer
 
+from src.optim import AdamW
+
 
 def run_linear(
     d_in: int,
@@ -562,7 +564,7 @@ def get_adamw_cls() -> Any:
     """
     Returns a torch.optim.Optimizer that implements AdamW.
     """
-    raise NotImplementedError
+    return AdamW
 
 
 def run_get_lr_cosine_schedule(
