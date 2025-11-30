@@ -139,11 +139,12 @@ def softmax(in_features: torch.Tensor, dim: int):
 
     max_ = in_features.max(dim=dim, keepdim=True).values
     v = in_features - max_
+    v = v.exp()
+    sum_ = torch.sum(v, dim=dim, keepdim=True).to(
+        dtype=in_features.dtype, device=in_features.device
+    )
 
-    exp_ = torch.exp(v)
-    sum_ = torch.sum(exp_, dim=dim, keepdim=True)
-
-    return exp_ / sum_
+    return v / sum_
 
 
 def scaled_dot_product_attention(
@@ -232,3 +233,31 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         out = self.output_proj(multihead)
 
         return out
+
+
+def cross_entropy_loss(logits: torch.Tensor, targets: torch.Tensor, reduction=None):
+    max_logits = logits.max(dim=1, keepdim=True).values  # (N, 1)
+
+    logits_shifted = logits - max_logits
+
+    logsumexp = logits_shifted.exp().sum(dim=-1, keepdim=True).log()  # (N, 1)
+
+    loss = (
+        -logits[torch.arange(logits.shape[0]), targets]
+        + max_logits.squeeze(-1)
+        + logsumexp.squeeze(-1)
+    )
+
+    if reduction == "mean":
+        loss = loss.mean()
+    return loss
+
+
+def perplexity(logits, targets):
+    # logits.shape = (N, L, VOCAB_SIZE)
+
+    loss = cross_entropy_loss(logits, targets, reduction=None)  # (N, L)
+
+    perplex = loss.exp().mean(dim=1)
+
+    return perplex

@@ -22,6 +22,7 @@ from src.nn.utils import (
     softmax,
     scaled_dot_product_attention,
     CausalMultiHeadSelfAttention,
+    cross_entropy_loss,
 )
 
 from src.nn.tranfromer_layer import TransformerLayer
@@ -540,7 +541,7 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
+    return cross_entropy_loss(inputs, targets, reduction="mean")
 
 
 def run_gradient_clipping(
