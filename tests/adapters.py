@@ -23,6 +23,7 @@ from src.nn.utils import (
     scaled_dot_product_attention,
     CausalMultiHeadSelfAttention,
     cross_entropy_loss,
+    learning_rate_cosine_schedule,
 )
 
 from src.nn.tranfromer_layer import TransformerLayer
@@ -592,7 +593,9 @@ def run_get_lr_cosine_schedule(
     Returns:
         Learning rate at the given iteration under the specified schedule.
     """
-    raise NotImplementedError
+    return learning_rate_cosine_schedule(
+        it, max_learning_rate, min_learning_rate, warmup_iters, cosine_cycle_iters
+    )
 
 
 def run_save_checkpoint(
