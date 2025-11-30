@@ -23,13 +23,13 @@ from src.nn.utils import (
     scaled_dot_product_attention,
     CausalMultiHeadSelfAttention,
     cross_entropy_loss,
-    learning_rate_cosine_schedule,
 )
 
 from src.nn.tranfromer_layer import TransformerLayer
 from src.nn.transformer import Transformer
 
 from src.optim import AdamW
+from src.utils import learning_rate_cosine_schedule
 
 
 def run_linear(
