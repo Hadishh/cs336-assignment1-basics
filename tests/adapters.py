@@ -29,7 +29,12 @@ from src.nn.tranfromer_layer import TransformerLayer
 from src.nn.transformer import Transformer
 
 from src.optim import AdamW
-from src.utils import learning_rate_cosine_schedule, gradient_clipping
+from src.utils import (
+    learning_rate_cosine_schedule,
+    gradient_clipping,
+    save_checkpoint,
+    load_checkpoint,
+)
 from src.data.utils import data_loading
 
 
@@ -615,7 +620,7 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    raise NotImplementedError
+    save_checkpoint(model, optimizer, iteration, out)
 
 
 def run_load_checkpoint(
@@ -636,7 +641,7 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    raise NotImplementedError
+    return load_checkpoint(src, model, optimizer)
 
 
 def get_tokenizer(
