@@ -10,6 +10,7 @@ if __name__ == "__main__":
     parser.add_argument("--vocab", required=True)
     parser.add_argument("--merges", required=True)
     parser.add_argument("--input_file", required=True)
+    parser.add_argument("--flatten", action="store_true")
     parser.add_argument("--special_tokens", nargs="+", default=["<|endoftext|>"])
 
     parser.add_argument("--out", required=True)
@@ -26,6 +27,8 @@ if __name__ == "__main__":
 
     tokens = np.array(tokens, dtype=np.uint16)
 
+    if args.flatten:
+        tokens = tokens.flatten()
     with open(args.out, "wb") as f:
         np.save(f, tokens)
 
