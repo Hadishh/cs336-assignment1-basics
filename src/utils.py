@@ -56,3 +56,7 @@ def load_checkpoint(src, model: torch.nn.Module, optimizer: torch.optim.Optimize
     optimizer.load_state_dict(obj["optimizer"])
 
     return obj["iteration"]
+
+
+def compute_steps(total_tokens, batch_size, context_length):
+    return math.ceil(total_tokens / (batch_size * context_length))
