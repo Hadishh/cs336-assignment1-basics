@@ -208,6 +208,9 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         V = einops.rearrange(
             V, "... seq (h dv) -> ... h seq dv", h=self.num_heads, dv=d_v
         )
+        if token_positions is None:
+            token_positions = torch.arange(seq_len, device=Q.device)
+            token_positions = einops.repeat(token_positions, "seq -> b seq", b=batch_s)
 
         if self.RoPE is not None:
             Q = self.RoPE(Q, token_positions)

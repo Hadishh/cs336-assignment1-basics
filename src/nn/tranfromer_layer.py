@@ -22,9 +22,9 @@ class TransformerLayer(torch.nn.Module):
         )
         self.ffn = SwiGLU(d_model, d_ff, device=device, dtype=dtype)
 
-    def forward(self, x, token_positions=None):
+    def forward(self, x):
         y = self.ln1(x)
-        y = x + self.attn(y, token_positions)
+        y = x + self.attn(y)
 
         x_ffn = self.ln2(y)
 

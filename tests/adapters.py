@@ -346,12 +346,10 @@ def run_transformer_block(
     layer = TransformerLayer(d_model=d_model, num_heads=num_heads, d_ff=d_ff, rope=rope)
     batch_size = in_features.shape[0]
     seq_len = in_features.shape[1]
-    token_positions = torch.arange(seq_len, device=in_features.device)
-    token_positions = einops.repeat(token_positions, "seq -> b seq", b=batch_size)
 
     layer.load_state_dict(weights)
     # print(token_positions.shape)
-    return layer(in_features, token_positions)
+    return layer(in_features)
 
 
 def run_transformer_lm(
@@ -446,12 +444,7 @@ def run_transformer_lm(
     )
     lm.load_state_dict(weights)
 
-    token_positions = torch.arange(in_indices.shape[-1], device=in_indices.device)
-    token_positions = einops.repeat(
-        token_positions, "seq -> b seq", b=in_indices.shape[0]
-    )
-
-    return lm(in_indices, token_positions)
+    return lm(in_indices)
 
 
 def run_rmsnorm(

@@ -42,12 +42,12 @@ class Transformer(torch.nn.Module):
             in_features=d_model, out_features=vocab_size, device=device, dtype=dtype
         )
 
-    def forward(self, x, token_positions):
+    def forward(self, x):
 
         x = self.token_embeddings(x)
 
         for layer in self.layers:
-            x = layer(x, token_positions)
+            x = layer(x)
 
         x = self.ln_final(x)
 
