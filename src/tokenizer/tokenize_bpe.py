@@ -3,6 +3,7 @@ import argparse
 from src.tokenizer.bpe.bpe_tokenizer import Tokenizer
 import numpy as np
 from tqdm import tqdm
+import os
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -29,6 +30,8 @@ if __name__ == "__main__":
 
     if args.flatten:
         tokens = tokens.flatten()
+    dirname = os.path.dirname(args.out)
+    os.makedirs(dirname, exist_ok=True)
     with open(args.out, "wb") as f:
         np.save(f, tokens)
 
