@@ -135,10 +135,11 @@ class RotaryPositionalEmbeddings(torch.nn.Module):
         return (sin + cos).to(device=x.device, dtype=x.dtype)
 
 
-def softmax(in_features: torch.Tensor, dim: int):
+def softmax(in_features: torch.Tensor, dim: int, temperature: float = 1.0):
 
     max_ = in_features.max(dim=dim, keepdim=True).values
     v = in_features - max_
+    v = v / temperature
     v = v.exp()
     sum_ = torch.sum(v, dim=dim, keepdim=True).to(
         dtype=in_features.dtype, device=in_features.device
