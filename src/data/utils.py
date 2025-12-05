@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 
-def data_loading(x, batch_size, context_length, device="cpu", token_positions=False):
+def data_loading(x, batch_size, context_length, device="cpu"):
     starts = np.random.randint(
         low=0, high=x.shape[0] - context_length, size=(batch_size,)
     )
@@ -17,10 +17,6 @@ def data_loading(x, batch_size, context_length, device="cpu", token_positions=Fa
 
     x_sub = torch.tensor(x_sub, device=device)
     y = torch.tensor(y, device=device)
-
-    if token_positions:
-        positions = torch.tensor(positions, device=device)
-        return x_sub, y, positions
 
     return x_sub, y
 
