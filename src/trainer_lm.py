@@ -14,6 +14,7 @@ from src.utils import (
     gradient_clipping,
     save_checkpoint,
     load_checkpoint,
+    load_config,
 )
 
 
@@ -126,6 +127,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("--config", type=str)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--nheads", type=int, default=4)
     parser.add_argument("--nlayers", type=int, default=6)
@@ -148,24 +150,24 @@ if __name__ == "__main__":
     parser.add_argument("--load_checkpoint", type=str, default=None)
 
     parser.add_argument("--total_tokens_processed", type=int, default=327_680_000)
-    parser.add_argument("--train_data", type=str, required=True)
-    parser.add_argument("--vocab_size", type=int, required=True)
-    parser.add_argument("--learning_rate", type=float, required=True)
-    parser.add_argument("--wandb_project", type=str, required=True)
-    parser.add_argument("--wandb_name", type=str, required=True)
-    parser.add_argument("--output_dir", type=str, required=True)
+    parser.add_argument("--train_data", type=str)
+    parser.add_argument("--vocab_size", type=int)
+    parser.add_argument("--learning_rate", type=float)
+    parser.add_argument("--wandb_project", type=str)
+    parser.add_argument("--wandb_name", type=str)
+    parser.add_argument("--output_dir", type=str)
 
     parser.add_argument("--valid_data", type=str, default=None)
     parser.add_argument("--valid_iters", type=int, default=100)
     parser.add_argument("--valid_every", type=int, default=1000)
 
     args = parser.parse_args()
-
+    arg_types = {a.dest: a.type for a in parser._actions if a.type is not None}
     if args.use_cuda:
         device = "cuda:0"
     else:
         device = "cpu"
-    args = vars(args)
+    args = load_config(args, arg_types)
     args["device"] = device
 
     wandb.init(project=args["wandb_project"], name=args["wandb_name"], config=args)
