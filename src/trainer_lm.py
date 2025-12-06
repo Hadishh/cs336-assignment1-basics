@@ -3,6 +3,7 @@ import os
 import numpy as np
 import wandb
 
+import einops
 from src.data.utils import data_loading
 from src.nn.transformer import Transformer
 from src.nn.utils import cross_entropy_loss
@@ -69,6 +70,7 @@ def train(config):
     else:
         step = 1
 
+    print("Initiated with total steps: ", total_steps)
     while step <= total_steps:
         x, y = data_loading(
             train_data,
@@ -81,7 +83,11 @@ def train(config):
 
         logits = model(x)
 
-        loss = cross_entropy_loss(logits, y, reduction="mean")
+        logits_flat = einops.rearrange(logits, "b l v -> (b l) v")
+        y_flat = einops.rearrange(y, "b l -> (b l)")
+
+        loss = cross_entropy_loss(logits_flat, y_flat, reduction="mean")
+
         loss.backward()
 
         # clipping
@@ -101,13 +107,13 @@ def train(config):
 
         optimizer.step()
 
-        if valid_data is not None and config.valid_every % step == 0:
+        if valid_data is not None and step % config.valid_every == 0:
             valid_loss = validation(config, model, valid_data)
             wandb.log({"global_step": step, "valid/loss": valid_loss})
             print(f"Validation on {config.valid_iters} Iterations | Loss: {valid_loss}")
         if step % config.log_every == 0:
             wandb.log({"global_step": step, "train/loss": loss.item(), "train/lr": lr})
-            print(f"Update: {step} | Loss: {loss.item()}  | lr : {lr}")
+            print(f"Update: {step} | Loss: {loss.item():.5f}  | lr : {lr:.2e}")
 
         if step % config.save_every == 0:
             save_path = os.path.join(config.output_dir, f"checkpoint_{step}.pt")
@@ -138,18 +144,19 @@ if __name__ == "__main__":
     parser.add_argument("--lr_max", type=float, default=1e-3)
     parser.add_argument("--lr_min", type=float, default=1e-5)
     parser.add_argument("--warmup", type=int, default=10000)
-    parser.add_argument("--annealing_iters", type=int, defulat=20000)
+    parser.add_argument("--annealing_iters", type=int, default=20000)
     parser.add_argument("--load_checkpoint", type=str, default=None)
 
     parser.add_argument("--total_tokens_processed", type=int, default=327_680_000)
     parser.add_argument("--train_data", type=str, required=True)
     parser.add_argument("--vocab_size", type=int, required=True)
     parser.add_argument("--learning_rate", type=float, required=True)
-    parser.add_argument("--wadb_name", type=str, required=True)
+    parser.add_argument("--wandb_project", type=str, required=True)
+    parser.add_argument("--wandb_name", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
 
     parser.add_argument("--valid_data", type=str, default=None)
-    parser.add_argument("--valid_iters", type=int, defalut=100)
+    parser.add_argument("--valid_iters", type=int, default=100)
     parser.add_argument("--valid_every", type=int, default=1000)
 
     args = parser.parse_args()
@@ -161,12 +168,12 @@ if __name__ == "__main__":
     args = vars(args)
     args["device"] = device
 
-    wandb.init(project=args.wandb_name, config=args)
+    wandb.init(project=args["wandb_project"], name=args["wandb_name"], config=args)
     wandb.define_metric("global_step")
     wandb.define_metric("train/*", step_metric="global_step")
     if args["valid_data"]:
         wandb.define_metric("valid/*")
 
     config = wandb.config
-
+    os.makedirs(config.output_dir, exist_ok=True)
     train(config)

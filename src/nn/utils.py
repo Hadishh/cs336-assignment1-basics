@@ -40,7 +40,7 @@ class RMSNorm(torch.nn.Module):
         g = torch.ones(size=(d_model,), device=device, dtype=dtype)
 
         self.weight = torch.nn.Parameter(g)
-        self.epsilon = torch.Tensor([eps])
+        self.epsilon = eps
 
     def forward(self, x: torch.Tensor):
         x_type = x.dtype
@@ -99,7 +99,6 @@ class RotaryPositionalEmbeddings(torch.nn.Module):
     def __init__(self, d_k, theta, max_seq_len, device=None):
         super().__init__()
 
-        r = [[] for i in range(max_seq_len)]
         self.theta = theta
         seq_len_ind = torch.arange(0, max_seq_len, device=device).unsqueeze(1)
         k_theta = torch.arange(0, d_k // 2, device=device).unsqueeze(0)
@@ -211,7 +210,9 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
         )
         if token_positions is None:
             token_positions = torch.arange(seq_len, device=Q.device)
-            token_positions = einops.repeat(token_positions, "seq -> b seq", b=batch_s)
+            token_positions = einops.repeat(
+                token_positions, "seq -> b 1 seq", b=batch_s
+            )
 
         if self.RoPE is not None:
             Q = self.RoPE(Q, token_positions)
@@ -240,11 +241,11 @@ class CausalMultiHeadSelfAttention(torch.nn.Module):
 
 
 def cross_entropy_loss(logits: torch.Tensor, targets: torch.Tensor, reduction=None):
-    max_logits = logits.max(dim=1, keepdim=True).values  # (N, 1)
+    max_logits = logits.max(dim=1, keepdim=True).values
 
     logits_shifted = logits - max_logits
 
-    logsumexp = logits_shifted.exp().sum(dim=-1, keepdim=True).log()  # (N, 1)
+    logsumexp = logits_shifted.exp().sum(dim=-1, keepdim=True).log()
 
     loss = (
         -logits[torch.arange(logits.shape[0]), targets]

@@ -15,8 +15,8 @@ def data_loading(x, batch_size, context_length, device="cpu"):
     y = np.stack(y)
     positions = np.stack(positions)
 
-    x_sub = torch.tensor(x_sub, device=device)
-    y = torch.tensor(y, device=device)
+    x_sub = torch.tensor(x_sub, dtype=torch.int, device=device)
+    y = torch.tensor(y, dtype=torch.int, device=device)
 
     return x_sub, y
 
