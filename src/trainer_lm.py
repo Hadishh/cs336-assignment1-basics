@@ -27,7 +27,9 @@ def validation(config, model, valid_data):
         )
 
         logits = model(x)
-        loss = cross_entropy_loss(logits, y, reduction="mean")
+        logits_flat = einops.rearrange(logits, "b l v -> (b l) v")
+        y_flat = einops.rearrange(y, "b l -> (b l)")
+        loss = cross_entropy_loss(logits_flat, y_flat, reduction="mean")
         valid_loss += loss.item()
         valid_iters += 1
 
@@ -163,11 +165,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     arg_types = {a.dest: a.type for a in parser._actions if a.type is not None}
-    if args.use_cuda:
+    args = load_config(args, arg_types)
+    if args["use_cuda"]:
         device = "cuda:0"
     else:
         device = "cpu"
-    args = load_config(args, arg_types)
     args["device"] = device
 
     wandb.init(project=args["wandb_project"], name=args["wandb_name"], config=args)

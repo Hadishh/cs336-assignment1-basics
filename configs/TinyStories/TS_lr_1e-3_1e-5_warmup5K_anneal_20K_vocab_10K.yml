@@ -7,6 +7,7 @@ valid_data: results/TinyStories_tokenized/valid_flatten.npy
 vocab_size: 10000
 batch_size: 32
 context_length: 256
+use_cuda: true
 
 # arch
 nheads: 16
@@ -26,6 +27,7 @@ learning_rate: 1e-5
 #validation
 valid_iters: 100
 valid_every: 500
+log_every: 50
 
 #wandb
 wandb_project: TinyStories
