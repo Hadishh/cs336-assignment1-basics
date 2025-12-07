@@ -4,7 +4,7 @@ import numpy as np
 import wandb
 
 import einops
-from src.data.utils import data_loading
+from src.data.utils import data_loading, valid_data_loading
 from src.nn.transformer import Transformer
 from src.nn.utils import cross_entropy_loss
 from src.optim import AdamW
@@ -19,24 +19,24 @@ from src.utils import (
 
 
 def validation(config, model, valid_data):
-    valid_iters = 0
     valid_loss = 0.0
-    while valid_iters < config.valid_iters:
-        x, y = data_loading(
-            valid_data, config.batch_size, config.context_length, config.device
-        )
+    valid_batches = valid_data_loading(
+        valid_data, config.batch_size, config.context_length, config.device
+    )
+
+    for x, y in valid_batches:
 
         logits = model(x)
         logits_flat = einops.rearrange(logits, "b l v -> (b l) v")
         y_flat = einops.rearrange(y, "b l -> (b l)")
         loss = cross_entropy_loss(logits_flat, y_flat, reduction="mean")
         valid_loss += loss.item()
-        valid_iters += 1
 
-    return {"loss": valid_loss / valid_iters}
+    return {"loss": valid_loss / len(valid_batches)}
 
 
 def train(config):
+    best_valid_loss = float("inf")
     train_data = np.load(config.train_data, mmap_mode="r")
     if config.valid_data:
         valid_data = np.load(config.valid_data, mmap_mode="r")
@@ -113,7 +113,13 @@ def train(config):
         if valid_data is not None and step % config.valid_every == 0:
             valid_loss = validation(config, model, valid_data)
             wandb.log({"global_step": step, "valid/loss": valid_loss})
-            print(f"Validation on {config.valid_iters} Iterations | Loss: {valid_loss}")
+            print(
+                f"Validation on {config.valid_iters} Iterations | Loss: {valid_loss['loss']}"
+            )
+            if valid_loss < best_valid_loss:
+                save_path = os.path.join(config.output_dir, f"checkpoint_best.pt")
+                save_checkpoint(model, optimizer, step, save_path)
+                best_valid_loss = valid_loss
         if step % config.log_every == 0:
             wandb.log({"global_step": step, "train/loss": loss.item(), "train/lr": lr})
             print(f"Update: {step} | Loss: {loss.item():.5f}  | lr : {lr:.2e}")
@@ -160,7 +166,6 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str)
 
     parser.add_argument("--valid_data", type=str, default=None)
-    parser.add_argument("--valid_iters", type=int, default=100)
     parser.add_argument("--valid_every", type=int, default=1000)
 
     args = parser.parse_args()
@@ -176,7 +181,7 @@ if __name__ == "__main__":
     wandb.define_metric("global_step")
     wandb.define_metric("train/*", step_metric="global_step")
     if args["valid_data"]:
-        wandb.define_metric("valid/*")
+        wandb.define_metric("valid/*", step_metric="global_step")
 
     config = wandb.config
     os.makedirs(config.output_dir, exist_ok=True)
