@@ -30,7 +30,7 @@ log_every: 50
 
 #wandb
 wandb_project: TinyStories
-wandb_name: TS_lr_1e-3_1e-5_warmup5K_anneal_20K_vocab_10K
+wandb_name: TS_lr_1e-3_1e-5_warmup4K_anneal_20K_vocab_10K
 
-output_dir: results/training/TinyStories/TS_lr_1e-3_1e-5_warmup5K_anneal_20K_vocab_10K/
+output_dir: results/training/TinyStories/TS_lr_1e-3_1e-5_warmup4K_anneal_20K_vocab_10K/
 save_every: 5000

@@ -113,9 +113,7 @@ def train(config):
         if valid_data is not None and step % config.valid_every == 0:
             valid_loss = validation(config, model, valid_data)
             wandb.log({"global_step": step, "valid/loss": valid_loss})
-            print(
-                f"Validation on {config.valid_iters} Iterations | Loss: {valid_loss['loss']}"
-            )
+            print(f"Validation | Loss: {valid_loss['loss']}")
             if valid_loss < best_valid_loss:
                 save_path = os.path.join(config.output_dir, f"checkpoint_best.pt")
                 save_checkpoint(model, optimizer, step, save_path)
