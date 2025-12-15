@@ -20,23 +20,46 @@ from src.utils import (
 
 def validation(config, model, valid_data):
     valid_loss = 0.0
-    valid_batches = valid_data_loading(
-        valid_data, config.batch_size, config.context_length, config.device
-    )
 
-    for x, y in valid_batches:
+    for _ in range(config.valid_iters):
 
+        x, y = data_loading(
+            valid_data, config.batch_size, config.context_length, config.device
+        )
         logits = model(x)
         logits_flat = einops.rearrange(logits, "b l v -> (b l) v")
         y_flat = einops.rearrange(y, "b l -> (b l)")
         loss = cross_entropy_loss(logits_flat, y_flat, reduction="mean")
         valid_loss += loss.item()
 
-    return {"loss": valid_loss / len(valid_batches)}
+    return {"loss": valid_loss / config.valid_iters}
+
+
+def save_best_n_valid_loss(
+    config, best_valid_losses, valid_loss, model, optimizer, step
+):
+    if len(best_valid_losses) < config.save_best_n:
+        save_path = os.path.join(config.output_dir, f"checkpoint_{valid_loss:.3f}.pt")
+        save_checkpoint(model, optimizer, step, save_path)
+        best_valid_losses.append((valid_loss, save_path))
+        best_valid_losses.sort(key=lambda x: x[0])
+
+    elif valid_loss < best_valid_losses[-1][0]:
+        _, worst_path = best_valid_losses[-1]
+        if os.path.exists(worst_path):
+            os.remove(worst_path)
+
+        save_path = os.path.join(config.output_dir, f"checkpoint_{valid_loss:.3f}.pt")
+        save_checkpoint(model, optimizer, step, save_path)
+
+        best_valid_losses[-1] = (valid_loss, save_path)
+        best_valid_losses.sort(key=lambda x: x[0])
+
+    return best_valid_losses
 
 
 def train(config):
-    best_valid_loss = float("inf")
+    best_valid_losses = []
     train_data = np.load(config.train_data, mmap_mode="r")
     if config.valid_data:
         valid_data = np.load(config.valid_data, mmap_mode="r")
@@ -112,12 +135,13 @@ def train(config):
 
         if valid_data is not None and step % config.valid_every == 0:
             valid_loss = validation(config, model, valid_data)
+            valid_loss = valid_loss["loss"]
             wandb.log({"global_step": step, "valid/loss": valid_loss})
-            print(f"Validation | Loss: {valid_loss['loss']}")
-            if valid_loss < best_valid_loss:
-                save_path = os.path.join(config.output_dir, f"checkpoint_best.pt")
-                save_checkpoint(model, optimizer, step, save_path)
-                best_valid_loss = valid_loss
+            print(f"Validation | Loss: {valid_loss}")
+            best_valid_losses = save_best_n_valid_loss(
+                config, best_valid_losses, valid_loss, model, optimizer, step
+            )
+
         if step % config.log_every == 0:
             wandb.log({"global_step": step, "train/loss": loss.item(), "train/lr": lr})
             print(f"Update: {step} | Loss: {loss.item():.5f}  | lr : {lr:.2e}")
@@ -164,7 +188,9 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str)
 
     parser.add_argument("--valid_data", type=str, default=None)
+    parser.add_argument("--valid_iters", type=int, default=100)
     parser.add_argument("--valid_every", type=int, default=1000)
+    parser.add_argument("--save_best_n", type=int, default=5)
 
     args = parser.parse_args()
     arg_types = {a.dest: a.type for a in parser._actions if a.type is not None}

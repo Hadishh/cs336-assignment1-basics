@@ -26,11 +26,13 @@ learning_rate: 1e-5
 
 #validation
 valid_every: 2500
+valid_iters: 250
 log_every: 50
+save_best_n: 5
 
 #wandb
 wandb_project: TinyStories
 wandb_name: TS_lr_1e-3_1e-5_warmup4K_anneal_20K_vocab_10K
 
 output_dir: results/training/TinyStories/TS_lr_1e-3_1e-5_warmup4K_anneal_20K_vocab_10K/
-save_every: 5000
+save_every: 10000
