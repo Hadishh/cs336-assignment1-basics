@@ -117,7 +117,7 @@ def train(config):
         loss.backward()
 
         # clipping
-        gradient_clipping(model.parameters(), M=config.clip_norm)
+        gnorm = gradient_clipping(model.parameters(), M=config.clip_norm)
 
         lr = config.learning_rate
         if lr_scheduler is not None:
@@ -143,7 +143,14 @@ def train(config):
             )
 
         if step % config.log_every == 0:
-            wandb.log({"global_step": step, "train/loss": loss.item(), "train/lr": lr})
+            wandb.log(
+                {
+                    "global_step": step,
+                    "train/loss": loss.item(),
+                    "train/lr": lr,
+                    "train/gnorm": gnorm,
+                }
+            )
             print(f"Update: {step} | Loss: {loss.item():.5f}  | lr : {lr:.2e}")
 
         if step % config.save_every == 0:

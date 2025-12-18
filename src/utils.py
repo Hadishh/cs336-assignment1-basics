@@ -2,6 +2,7 @@ import math
 import torch
 from typing import Iterable
 import yaml
+import os
 
 
 def learning_rate_cosine_schedule(t, lr_max, lr_min, warmpus, annealing_iters):
@@ -20,20 +21,21 @@ def learning_rate_cosine_schedule(t, lr_max, lr_min, warmpus, annealing_iters):
 
 
 def gradient_clipping(params: Iterable[torch.nn.Parameter], M: float, eps=1e-6):
-    global_norm = 0
+    gnorm = 0
     for param in params:
         if param.grad is None:
             continue
         l2 = torch.linalg.norm(param.grad)
-        global_norm += l2 * l2
-    global_norm = math.sqrt(global_norm)
-    if global_norm < M:
-        return
+        gnorm += l2 * l2
+    gnorm = math.sqrt(gnorm)
+    if gnorm < M:
+        return gnorm
 
     for param in params:
         if param.grad is None:
             continue
-        param.grad.data *= M / (global_norm + eps)
+        param.grad.data *= M / (gnorm + eps)
+    return gnorm
 
 
 def save_checkpoint(
@@ -73,6 +75,8 @@ def load_config(args, arg_types):
 
     if args.config is None:
         return cfg
+    config_name = os.path.basename(args.config)
+    fname, ext = os.path.splitext(config_name)
 
     with open(args.config, "r") as f:
         yaml_cfg = yaml.safe_load(f) or {}
@@ -95,5 +99,6 @@ def load_config(args, arg_types):
                 cfg[key] = yaml_val
         else:
             cfg[key] = yaml_val
-
+    cfg["wandb_name"] = fname
+    cfg["output_dir"] = os.path.join(cfg["output_dir"], fname)
     return cfg

@@ -21,7 +21,7 @@ lr_max: 5e-4
 lr_min: 1e-5
 lr_schedule: cosine
 warmup: 3000
-annealing_iters: 20000
+annealing_iters: 30000
 learning_rate: 1e-5
 
 #validation
