@@ -5,7 +5,7 @@ valid_data: results/TinyStories_tokenized/valid_flatten.npy
 
 
 vocab_size: 10000
-batch_size: 1
+batch_size: 128
 context_length: 256
 use_cuda: true
 

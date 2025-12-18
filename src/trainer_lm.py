@@ -24,7 +24,7 @@ def validation(config, model, valid_data):
     for _ in range(config.valid_iters):
 
         x, y = data_loading(
-            valid_data, config.batch_size, config.context_length, config.device
+            valid_data, config.valid_batch_size, config.context_length, config.device
         )
         logits = model(x)
         logits_flat = einops.rearrange(logits, "b l v -> (b l) v")
@@ -166,6 +166,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--config", type=str)
     parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--valid_batch_size", type=int, default=32)
     parser.add_argument("--nheads", type=int, default=4)
     parser.add_argument("--nlayers", type=int, default=6)
     parser.add_argument("--context_length", type=int, default=256)
