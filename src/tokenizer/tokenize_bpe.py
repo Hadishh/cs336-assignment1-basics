@@ -4,15 +4,14 @@ from src.tokenizer.bpe.bpe_tokenizer import Tokenizer
 import numpy as np
 from tqdm import tqdm
 import os
+from src.args import add_tokenizer_args
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
-    parser.add_argument("--vocab", required=True)
-    parser.add_argument("--merges", required=True)
     parser.add_argument("--input_file", required=True)
     parser.add_argument("--flatten", action="store_true")
-    parser.add_argument("--special_tokens", nargs="+", default=["<|endoftext|>"])
+
+    parser = add_tokenizer_args(parser)
 
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
