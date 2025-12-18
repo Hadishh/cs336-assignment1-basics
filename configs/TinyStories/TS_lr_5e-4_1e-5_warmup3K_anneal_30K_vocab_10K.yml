@@ -21,7 +21,7 @@ lr_max: 5e-4
 lr_min: 1e-5
 lr_schedule: cosine
 warmup: 3000
-annealing_iters: 20000
+annealing_iters: 30000
 learning_rate: 1e-5
 
 #validation
@@ -32,7 +32,7 @@ save_best_n: 5
 
 #wandb
 wandb_project: TinyStories
-wandb_name: TS_lr_5e-4_1e-5_warmup3K_anneal_20K_vocab_10K
+wandb_name: TS_lr_5e-4_1e-5_warmup3K_anneal_30K_vocab_10K
 
-output_dir: results/training/TinyStories/TS_lr_5e-4_1e-5_warmup3K_anneal_20K_vocab_10K/
+output_dir: results/training/TinyStories/TS_lr_5e-4_1e-5_warmup3K_anneal_30K_vocab_10K/
 save_every: 10000
